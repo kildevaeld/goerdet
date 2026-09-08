@@ -1,3 +1,7 @@
+use core::{fmt, pin::Pin};
+
+use alloc::string::{String, ToString};
+
 use crate::{
     BlockingSpawner, Executor, HasBlockingSpawner, HasLocalSpawner, HasSpawner, LocalSpawner,
     Spawner, Task,
@@ -70,14 +74,44 @@ impl LocalSpawner<'static> for CompioExecutor {
 }
 
 impl BlockingSpawner for CompioExecutor {
-    type Error = compio_executor::JoinError;
-    type Future<R> = compio_executor::JoinHandle<R>;
+    type Error = CompioJoinError;
+    type Future<R> = CompioBlockingFuture<R>;
     fn spawn_blocking<T, R>(&self, work: T) -> Self::Future<R>
     where
         R: Send + 'static,
         T: FnOnce() -> R + Send + 'static,
     {
-        compio::runtime::spawn_blocking(work)
+        CompioBlockingFuture(compio::runtime::spawn_blocking(work))
+    }
+}
+
+#[derive(Debug)]
+pub struct CompioJoinError(String);
+
+impl fmt::Display for CompioJoinError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CompioJoinError: {}", self.0)
+    }
+}
+
+impl core::error::Error for CompioJoinError {}
+
+/// Future returned by [`SmolExecutor::spawn_blocking`].
+///
+/// Wraps a [`smol::Task`] so that it resolves to `Result<R, Infallible>`,
+/// matching the [`BlockingSpawner`] contract.
+#[derive(Debug)]
+pub struct CompioBlockingFuture<R>(compio_executor::JoinHandle<R>);
+
+impl<R> core::future::Future for CompioBlockingFuture<R> {
+    type Output = Result<R, CompioJoinError>;
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut core::task::Context<'_>,
+    ) -> core::task::Poll<Self::Output> {
+        Pin::new(&mut self.0)
+            .poll(cx)
+            .map_err(|m| CompioJoinError(m.to_string()))
     }
 }
 
