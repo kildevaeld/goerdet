@@ -1,0 +1,28 @@
+[package]
+name = "goerdet"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+compio = ["dep:compio", "dep:compio-executor"]
+tokio = ["dep:tokio"]
+smol = ["dep:smol"]
+hyper = ["dep:hyper"]
+
+alloc = []
+
+[dependencies]
+hyper = { version = "1.11", features = [], optional = true }
+tokio = { version = "1", features = ["rt"], optional = true }
+compio = { version = "0.19", default-features = false, features = [
+    "runtime",
+], optional = true }
+compio-executor = { version = "0.1", default-features = false, features = [
+], optional = true }
+smol = { version = "2", default-features = false, optional = true }
+
+[[test]]
+path = "tests/boxed.rs"
+name = "tests"
+required-features = ["alloc"]
