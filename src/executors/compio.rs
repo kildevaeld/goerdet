@@ -73,6 +73,17 @@ impl LocalSpawner<'static> for CompioExecutor {
     }
 }
 
+impl LocalSpawner<'static> for compio::runtime::Runtime {
+    type Task = CompioTask;
+
+    fn spawn<T>(&self, work: T) -> Self::Task
+    where
+        T: core::future::Future<Output = ()> + 'static,
+    {
+        CompioTask(compio::runtime::spawn(work))
+    }
+}
+
 impl BlockingSpawner for CompioExecutor {
     type Error = CompioJoinError;
     type Future<R> = CompioBlockingFuture<R>;

@@ -65,6 +65,17 @@ impl Spawner<'static> for TokioExecutor {
     }
 }
 
+impl Spawner<'static> for tokio::runtime::Runtime {
+    type Task = TokioTask;
+
+    fn spawn<T>(&self, work: T) -> Self::Task
+    where
+        T: core::future::Future<Output = ()> + Send + 'static,
+    {
+        TokioTask::new(tokio::task::spawn(work))
+    }
+}
+
 impl BlockingSpawner for TokioExecutor {
     type Future<R> = tokio::task::JoinHandle<R>;
     type Error = tokio::task::JoinError;

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
+# default = ["compio", "tokio"]
 compio = ["dep:compio", "dep:compio-executor", "alloc"]
 tokio = ["dep:tokio"]
 smol = ["dep:smol"]
