@@ -80,7 +80,21 @@ impl LocalSpawner<'static> for compio::runtime::Runtime {
     where
         T: core::future::Future<Output = ()> + 'static,
     {
-        CompioTask(compio::runtime::spawn(work))
+        CompioTask(self.spawn(work))
+    }
+}
+
+impl<T> Executor<T> for compio::runtime::Runtime
+where
+    T: core::future::Future + 'static,
+    T::Output: 'static,
+{
+    type Task = CompioTask;
+
+    fn spawn(&self, work: T) -> Self::Task {
+        CompioTask(self.spawn(async move {
+            let _ = work.await;
+        }))
     }
 }
 
@@ -93,6 +107,18 @@ impl BlockingSpawner for CompioExecutor {
         T: FnOnce() -> R + Send + 'static,
     {
         CompioBlockingFuture(compio::runtime::spawn_blocking(work))
+    }
+}
+
+impl BlockingSpawner for compio::runtime::Runtime {
+    type Error = CompioJoinError;
+    type Future<R> = CompioBlockingFuture<R>;
+    fn spawn_blocking<T, R>(&self, work: T) -> Self::Future<R>
+    where
+        R: Send + 'static,
+        T: FnOnce() -> R + Send + 'static,
+    {
+        CompioBlockingFuture(self.spawn_blocking(work))
     }
 }
 
